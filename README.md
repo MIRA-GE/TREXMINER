@@ -1,4 +1,7 @@
 # TREXMINER
+
+QQ群895287637
+
 Full list of command line options:
 
      -a, --algo                     Specify the hash algorithm to use.
