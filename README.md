@@ -1,5 +1,6 @@
 # TREXMINER
 Full list of command line options:
+
      -a, --algo                     Specify the hash algorithm to use.
                                    autolykos2
                                    etchash
