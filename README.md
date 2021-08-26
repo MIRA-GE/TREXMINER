@@ -1,56 +1,26 @@
 # TREXMINER
 Full list of command line options:
- -a, --algo                     Specify the hash algorithm to use.
-                                   astralhash
-                                   balloon
-                                   bcd
-                                   bitcore
-                                   c11
-                                   dedal
+     -a, --algo                     Specify the hash algorithm to use.
+                                   autolykos2
                                    etchash
                                    ethash
-                                   geek
-                                   hmq1725
-                                   honeycomb
-                                   jeonghash
                                    kawpow
-                                   lyra2z
-                                   megabtx
-                                   megamec
                                    mtp
                                    mtp-tcr
                                    multi
                                    octopus
-                                   padihash
-                                   pawelhash
-                                   phi
-                                   polytimos
                                    progpow
                                    progpow-veil
                                    progpow-veriblock
                                    progpowz
-                                   sha256q
-                                   sha256t
-                                   skunk
-                                   sonoa
                                    tensority
-                                   timetravel
-                                   tribus
-                                   x11r
-                                   x16r
-                                   x16rt
-                                   x16rv2
-                                   x16s
-                                   x17
-                                   x21s
-                                   x22i
-                                   x25x
-                                   x33
         --coin                     [Ethash, ProgPOW] Set coin name.
                                    Helps avoid DAG rebuilds when switching back from a dev fee session.
                                    Example: "eth" for Ethereum, "zil" for Zilliqa.
         --extra-dag-epoch          Allocate extra DAG at GPU for specified epoch. Can be useful for dual mining
                                    of coins like Zilliqa (ZIL). (eg: --extra-dag-epoch 0)
+                                   Can be set for each GPU separately by using comma separated list of values
+                                   (set to -1 for the GPUs that should not allocate the extra DAG).
         --nonce-start              [Ethash, ProgPOW] Starting nonce for the solution search.
         --nonce-range-size         [Ethash, ProgPOW] Nonce range size for nonce search. The range will be split between all devices.
     -d, --devices                  Comma separated list of CUDA devices to use.
@@ -58,6 +28,8 @@ Full list of command line options:
         --pci-indexing             Sort devices by PCI bus ID. Device IDs start with 0.
         --ab-indexing              Afterburner indexing (same as --pci-indexing but starts from 1).
     -i, --intensity                GPU intensity 8-25 (default: auto).
+                                   Controls the GPU workload size, in other words how many nonces the miner is
+                                   processing "in one go": N = 2 ^ intensity
         --low-load                 Low load mode (default: 0). 1 - enabled, 0 - disabled.
                                    Reduces the load on the GPUs if possible. Can be set to a comma separated string to enable
                                    the mode for a subset of the GPU list (eg: --low-load 0,0,1,0)
@@ -77,11 +49,14 @@ Full list of command line options:
                                    2 - recommended for 30xx cards to prevent invalid shares
                                    Can be set to a comma separated list to apply different values to different cards.
                                    (eg: --dag-build-mode 1,1,2,1)
-        --keep-gpu-busy            Continue mining even in case of connection loss.
+        --keep-gpu-busy            Continue mining even in case of pool connection loss.
+                                   Useful when a GPU crashes during start/stop cycle that occurs when internet
+                                   connection goes down.
 
     -o, --url                      URL of the mining pool in the following format: <scheme>://<host>:<port>
                                    Supported schemes: stratum+tcp
                                                       stratum+ssl
+                                                      stratum+http
                                                       stratum2+tcp
                                                       stratum2+ssl
                                    stratum2 is normally used by Nicehash, MiningPoolHub and other similar mining pools
@@ -117,10 +92,13 @@ Full list of command line options:
         --gpu-report-interval-s    GPU stats report frequency in shares. 0 by default (disabled).
     -q, --quiet                    Quiet mode. No GPU stats at all.
         --hide-date                Don't show date in console.
+        --send-stales              Don't drop stale shares.
+        --validate-shares          Validate shares before sending to a pool. Also enables share diff info.
+
         --no-color                 Disable color output for console.
+        --no-hashrate-report       Disable hashrate report to pool.
         --no-nvml                  Disable NVML GPU stats.
         --no-strict-ssl            Disable certificate validation for SSL connections.
-        --no-hashrate-report       Disable hashrate report to pool.
         --no-watchdog              Disable built-in watchdog.
         --watchdog-exit-mode       Specifies the action "A" the watchdog should take if the miner gets restarted "N" times
                                    within "M" minutes.
@@ -147,6 +125,8 @@ Full list of command line options:
                                    Parameter is set in seconds. (default: 600)
         --exit-on-cuda-error       Forces miner to immediately exit on CUDA error.
         --exit-on-connection-lost  Forces miner to immediately exit on connection lost.
+        --exit-on-high-power       Forces miner to immediately exit on high power consumption.
+                                   (eg: --exit-on-high-power 600 - exit in case of total power consumption exceeds 600W)
         --reconnect-on-fail-shares Forces miner to immediately reconnect to pool on N successively failed shares (default: 10).
 
         --fork-at                  Forces miner to change algorithm on predefined condition (works only with built-in watchdog enabled)
@@ -157,15 +137,6 @@ Full list of command line options:
                                    To change main pool port you must write it right after algo: <algo_name>:<port_number>
                                    (eg: --fork-at x16rv2:4081=time:2019-10-01T16:00:00).
 
-        --mt                       Memory tweak mode (default: 0 - disabled). Range from 0 to 6. General recommendation
-                                   is to start with 1, and then increase only if the GPU is stable.
-                                   The effect is similar to that of ETHlargementPill.
-                                   Supported on graphics cards with GDDR5 or GDDR5X memory only.
-                                   Requires running the miner with administrative privileges.
-                                   Can be set to a comma separated list to apply different values to different cards.
-                                   Example: --mt 4 (applies tweak mode #4 to all cards that support this functionality)
-                                            --mt 3,3,3,0 (applies tweak mode #3 to all cards except the last one)
-
         --script-start             Executes user script right after miner start (eg: --script-start path_to_user_script)
         --script-exit              Executes user script right before miner exit.
         --script-epoch-change      Executes user script on epoch change.
@@ -174,5 +145,62 @@ Full list of command line options:
                                    Example: --script-low-hash script_to_activate:50
                                             (activates "script_to_activate" script once total hashrate drops to 50MH/s)
 
+    ------------------ GPU fine tuning (Windows & Linux) ----------------
+
+        --pl                       Sets GPU power limit (Windows - in percent, Linux - in Watts)
+                                   Requires running the miner with administrative privileges.
+        --lock-cclock              Specifies desired locked GPU core clock speed in MHz. (default: 0 - disabled).
+                                   Requires running the miner with administrative privileges.
+                                   Example: --lock-cclock 1000 (applies clock 1000Mhz to all cards that support this functionality)
+                                            --lock-cclock 1000,1300,0 (applies clock 1000Mhz to GPU #0, 1300MHz to GPU #1, ignore GPU #2)
+
+        --mt                       Memory tweak mode (default: 0 - disabled). Range from 0 to 6. General recommendation
+                                   is to start with 1, and then increase only if the GPU is stable.
+                                   The effect is similar to that of ETHlargementPill.
+                                   Supported on Pascal GPUs with GDDR5 or GDDR5X memory only.
+                                   Requires running the miner with administrative privileges.
+                                   Can be set to a comma separated list to apply different values to different cards.
+                                   Example: --mt 4 (applies tweak mode #4 to all cards that support this functionality)
+                                            --mt 3,3,3,0 (applies tweak mode #3 to all cards except the last one)
+
+    ------------------ GPU fine tuning (Windows only) ------------------
+
+                                   All options can be set to a comma separated list to apply different values to
+                                   different cards. (default value for all options: 0 - not used)
+        --fan                      Sets GPU fan speed in percent or target temperature (auto-fan).
+                                   Valid formats:
+                                      --fan N           (where N is the fan speed)
+                                      --fan t:N         (where N is the target core temperature)
+                                      --fan t:N[T1-T2]  (same as above, but with the fan speed constrained by [T1%, T2%] range)
+                                      --fan tm:N        (where N is the target memory temperature)
+                                      --fan tm:N[T1-T2] (same as above, but with the fan speed constrained by [T1%, T2%] range)
+                                   Example: --fan 45,t:67,tm:95,t:69[45-100],tm:90[50-95]
+                                   which translates to
+                                      GPU #0: set fan speed to 45%
+                                      GPU #1: maintain GPU core temperature at 67C
+                                      GPU #2: maintain GPU memory temperature at 90C
+                                      GPU #3: maintain GPU core temperature at 69C
+                                              with the fan speed limited to [45%, 100%] range
+                                      GPU #4: maintain GPU memory temperature at 90C
+                                              with the fan speed limited to [50%, 95%] range
+                                   Note: fan speeds are limited to [0%, 100%] range in auto-fan mode by default.
+        --cclock                   Sets GPU core clock offset in MHz.
+                                   Requires running the miner with administrative privileges.
+                                   Will be set to 0 on exit and during DAG rebuild.
+        --mclock                   Sets GPU memory clock offset in MHz.
+                                   Requires running the miner with administrative privileges.
+                                   Will be set to 0 on exit and during DAG rebuild.
+        --cv                       Sets GPU core voltage in percent. Must be within [0, 100] range.
+                                   Use it only in case you know what you are doing!
+                                   Requires running the miner with administrative privileges.
+        --lock-cv                  Specifies desired GPU core voltage in mV. (default: 0 - disabled).
+                                   Requires running the miner with administrative privileges.
+        --pstate                   Sets GPU P-state. Valid values: p0.
+                                   Requires running the miner with administrative privileges.
+
+    --------------------------------------------------------------------
+
         --version                  Display version information and exit.
     -h, --help                     Display this help text and exit.
+
+
